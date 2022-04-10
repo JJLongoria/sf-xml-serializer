@@ -2,21 +2,34 @@ public class XMLSerializer {
     
     private static final List<String> RESERVED_WORDS = new List<String>{ 'number', 'abstract', 'after', 'any', 'activate', 'as', 'asc', 'autonomous', 'begin', 'before', 'bigdecimal', 'break', 'bulk', 'case', 'cast', 'catch', 'char', 'class', 'collect', 'commit', 'const', 'continue', 'default', 'delete', 'desc', 'do', 'else', 'enum', 'exit', 'export', 'extends', 'false', 'final', 'finally', 'float', 'for', 'global', 'goto', 'group', 'hint', 'if', 'implements', 'import', 'inner', 'insert', 'instanceof', 'interface', 'into', 'join', 'loop', 'merge', 'new', 'null', 'number', 'of', 'on', 'outer', 'override', 'package', 'parallel', 'pragma', 'private', 'protected', 'public', 'retrieve', 'return', 'returning', 'search', 'select', 'short', 'sort', 'stat', 'static', 'super', 'switch', 'synchronized', 'testmethod', 'this', 'throw', 'transaction', 'trigger', 'true', 'try', 'type', 'transient', 'undelete', 'update', 'upsert', 'virtual', 'webservice', 'while', 'when' };
     public static final String NULL_KEYWORD = '{!null}';
+    public static final String XML_INIT = '<?xml version="1.0" encoding="UTF-8" ?>';
 
     public static String serialize(Object obj){
-        return serialize(obj, false, false);
+        return serialize(obj, -1, false);
     }
 
     public static String serialize(Object obj, boolean supressNullValues){
-        return serialize(obj, false, supressNullValues);
+        return serialize(obj, -1, supressNullValues);
     }
 
     public static String serializePretty(Object obj){
-        return serialize(obj, true, false);
+        return serialize(obj, 0, false);
     }
 
     public static String serializePretty(Object obj, boolean supressNullValues){
-        return serialize(obj, true, supressNullValues);
+        return serialize(obj, 0, supressNullValues);
+    }
+
+    public static String toXML(String rootTag, Object obj){
+        return toXML(rootTag, obj, false);
+    }
+
+    public static String toXML(String rootTag, Object obj, boolean supressNullValues){
+        String xmlFile = XML_INIT + '\n';
+        xmlFile += '<'+rootTag+'>';
+        xmlFile += serialize(obj, 1, supressNullValues);
+        xmlFile += '</'+rootTag+'>';
+        return xmlFile;
     }
 
     public static Object deserialize(String xml, Type apexType){
@@ -47,7 +60,7 @@ public class XMLSerializer {
 
 
 
-    private static String serialize(Object obj, Boolean pretty, boolean supressNull){
+    private static String serialize(Object obj, Integer indent, boolean supressNull){
         String xmlBody = '';
         if(obj == null){
             return xmlBody;
@@ -55,7 +68,7 @@ public class XMLSerializer {
         Map<String, Object> data = (Map<String, Object>) JSON.deserializeUntyped(JSON.serialize(obj));
         for(String xmlFieldName : data.keySet()){
             Object value = data.get(xmlFieldName);
-            xmlBody += getXMLField(xmlFieldName, value, (pretty) ? 0 : -1, supressNull);
+            xmlBody += getXMLField(xmlFieldName, value, (indent >= 0) ? indent : -1, supressNull);
         }
         return xmlBody;
     }
@@ -119,7 +132,8 @@ public class XMLSerializer {
             return null;
         }
         Dom.XmlNode rootNode = doc.getRootElement();
-        return processNode(rootNode, handleNames);
+        Map<String, Object> root = (Map<String, Object>) processNode(rootNode, handleNames);
+        return root.get(rootNode.getName());
     }
 
     private static Object processNode(Dom.XmlNode node, Boolean handleNames){
